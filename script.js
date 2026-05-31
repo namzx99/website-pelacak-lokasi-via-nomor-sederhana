@@ -1,26 +1,26 @@
 function lacakNomor() {
-    const input = document.getElementById('phoneNumber').value.trim();
+    const inputRaw = document.getElementById('phoneNumber').value.trim();
     const resultBox = document.getElementById('result');
-    
-    if (input.length < 4) {
-        alert('Mohon masukkan nomor yang valid (minimal 4 digit awal).');
+    const input = inputRaw.replace(/\s+/g, '');
+
+    if (input.length < 8) {
+        alert('Mohon masukkan nomor yang valid dengan minimal 8 digit.');
         return;
     }
 
-    // Ambil 4 digit pertama (misal: 0812 atau 6281)
-    let prefix = input.substring(0, 4);
-    
-    // Normalisasi jika user pakai format +62 atau 62
-    if (prefix.startsWith('+62')) {
-        prefix = '0' + input.substring(3, 6);
-    } else if (prefix.startsWith('628')) {
-        prefix = '08' + input.substring(3, 5);
+    let normal = input;
+    if (normal.startsWith('+62')) {
+        normal = '0' + normal.substring(3);
+    } else if (normal.startsWith('62')) {
+        normal = '0' + normal.substring(2);
     }
 
-    let operator = "Tidak Dikenal / Format Salah";
-    let area = "Indonesia";
+    let prefix = normal.substring(0, 4);
+    if (prefix.length < 4) prefix = normal.substring(0, 3);
 
-    // Database prefix sederhana
+    let operator = 'Tidak Dikenal / Format Salah';
+    let area = 'Indonesia';
+
     const prefixList = {
         '0811': 'Telkomsel (Kartu Halo)',
         '0812': 'Telkomsel (simPATI/Loop)',
@@ -29,7 +29,7 @@ function lacakNomor() {
         '0822': 'Telkomsel (Loop)',
         '0852': 'Telkomsel (Kartu As)',
         '0809': 'Telkomsel (As)',
-        '0814': 'Indosat M2 (Broadband)',
+        '0814': 'Indosat (M2 Broadband)',
         '0815': 'Indosat (Matrix/Mentari)',
         '0816': 'Indosat (Matrix/Mentari)',
         '0855': 'Indosat (Matrix)',
@@ -55,32 +55,46 @@ function lacakNomor() {
         '0888': 'Smartfren'
     };
 
-    // Cek apakah prefix ada di database
     if (prefixList[prefix]) {
         operator = prefixList[prefix];
-        area = "Terdeteksi berdasarkan alokasi nasional";
+        area = 'Estimasi berdasarkan kode prefix operator';
     }
 
-    // Tampilkan hasil ke UI
-    document.getElementById('resPhone').innerText = input;
+    document.getElementById('resPhone').innerText = normal;
     document.getElementById('resOperator').innerText = operator;
     document.getElementById('resArea').innerText = area;
-    
-    // Munculkan kotak hasil
     resultBox.classList.remove('hidden');
 }
-// Fungsi ini berjalan di HP target saat mereka membuka link dari Anda
-navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+function dapatkanLokasi() {
+    const locationResult = document.getElementById('locationResult');
+    if (!navigator.geolocation) {
+        alert('Geolocation tidak didukung di browser ini.');
+        return;
+    }
 
-function successCallback(position) {
-    const latitude = position.coords.latitude;
-    const longitude = position.coords.longitude;
-    
-    console.log(`Lokasi Target - Lat: ${latitude}, Lon: ${longitude}`);
-    // Di sini Anda bisa mengirim data koordinat ini ke database website Anda
-    // Dan menampilkannya di Google Maps pada dashboard Anda
-}
-
-function errorCallback(error) {
-    alert("Target menolak memberikan akses lokasi.");
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            const latitude = position.coords.latitude.toFixed(6);
+            const longitude = position.coords.longitude.toFixed(6);
+            document.getElementById('resLat').innerText = latitude;
+            document.getElementById('resLon').innerText = longitude;
+            const url = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+            const link = document.getElementById('mapLink');
+            link.href = url;
+            link.innerText = 'Tampilkan di Google Maps';
+            locationResult.classList.remove('hidden');
+        },
+        function(error) {
+            if (error.code === error.PERMISSION_DENIED) {
+                alert('Izin lokasi ditolak. Untuk melihat GPS, izinkan akses lokasi.');
+            } else {
+                alert('Gagal mendapatkan lokasi: ' + error.message);
+            }
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
 }
