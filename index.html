@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pelacak Operator Nomor HP</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Pelacak Nomor HP Sederhana</h2>
+        <p>Masukkan nomor HP untuk mengetahui operator dan wilayah asal.</p>
+        
+        <div class="form-group">
+            <input type="tel" id="phoneNumber" placeholder="Contoh: 08123456789" autocomplete="off">
+            <button onclick="lacakNomor()">Lacak Nomor</button>
+        </div>
+
+        <div id="result" class="result-box hidden">
+            <h3>Hasil Analisis:</h3>
+            <p><strong>Nomor:</strong> <span id="resPhone">-</span></p>
+            <p><strong>Operator:</strong> <span id="resOperator">-</span></p>
+            <p><strong>Wilayah Estimasi:</strong> <span id="resArea">-</span></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
