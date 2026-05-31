@@ -3,24 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pelacak Operator Nomor HP</title>
+    <title>Pelacak Nomor WhatsApp & GPS</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h2>Pelacak Nomor HP Sederhana</h2>
-        <p>Masukkan nomor HP untuk mengetahui operator dan wilayah asal.</p>
-        
+        <h2>Pelacak Nomor WhatsApp & Lokasi</h2>
+        <p>Masukkan nomor WhatsApp untuk melihat operator dan wilayah estimasi. Untuk GPS, Anda dapat meminta lokasi perangkat Anda sendiri.</p>
+
         <div class="form-group">
-            <input type="tel" id="phoneNumber" placeholder="Contoh: 08123456789" autocomplete="off">
-            <button onclick="lacakNomor()">Lacak Nomor</button>
+            <input type="tel" id="phoneNumber" placeholder="Contoh: 08123456789 atau +628123456789" autocomplete="off">
+            <button onclick="lacakNomor()">Lacak Operator</button>
         </div>
 
         <div id="result" class="result-box hidden">
-            <h3>Hasil Analisis:</h3>
+            <h3>Hasil Analisis Nomor:</h3>
             <p><strong>Nomor:</strong> <span id="resPhone">-</span></p>
             <p><strong>Operator:</strong> <span id="resOperator">-</span></p>
             <p><strong>Wilayah Estimasi:</strong> <span id="resArea">-</span></p>
+        </div>
+
+        <div class="form-group">
+            <button class="secondary" onclick="dapatkanLokasi()">Dapatkan Lokasi Saya</button>
+        </div>
+
+        <div id="locationResult" class="result-box hidden">
+            <h3>Lokasi GPS Tersedia:</h3>
+            <p><strong>Latitude:</strong> <span id="resLat">-</span></p>
+            <p><strong>Longitude:</strong> <span id="resLon">-</span></p>
+            <p><strong>Link Peta:</strong> <a id="mapLink" href="#" target="_blank">Buka di Google Maps</a></p>
+        </div>
+
+        <div class="info-box">
+            <h4>Catatan Penting</h4>
+            <p>Pelacakan GPS "nomor WhatsApp" orang lain tidak dapat dilakukan dari website ini tanpa izin pemilik dan aplikasi resmi. Fitur GPS hanya dapat menunjukkan lokasi perangkat Anda sendiri saat Anda memberikan izin lewat browser.</p>
         </div>
     </div>
 
